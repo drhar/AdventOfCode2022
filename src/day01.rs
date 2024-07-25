@@ -12,7 +12,8 @@ pub fn day01(input_lines: &str) -> (String, String) {
 }
 
 pub fn parse_elf(elf: &str) -> i32 {
-    elf.parse::<i32>().expect(&format!("Expected number for {}", elf))
+    elf.parse::<i32>()
+        .unwrap_or_else(|_| panic!("Expected number for {}", elf))
 }
 #[cfg(test)]
 mod tests {
@@ -20,7 +21,9 @@ mod tests {
 
     #[test]
     fn check_day01_part1_case1() {
-        assert_eq!(day01("1000
+        assert_eq!(
+            day01(
+                "1000
 2000
 3000
 
@@ -33,12 +36,18 @@ mod tests {
 8000
 9000
 
-10000").0, "24000".to_string())
+10000"
+            )
+            .0,
+            "24000".to_string()
+        )
     }
 
     #[test]
     fn check_day01_part2_case1() {
-        assert_eq!(day01("1000
+        assert_eq!(
+            day01(
+                "1000
 2000
 3000
 
@@ -51,12 +60,18 @@ mod tests {
 8000
 9000
 
-10000").1, "45000".to_string())
+10000"
+            )
+            .1,
+            "45000".to_string()
+        )
     }
 
     #[test]
     fn check_day01_both_case1() {
-        assert_eq!(day01("1000
+        assert_eq!(
+            day01(
+                "1000
 2000
 3000
 
@@ -69,6 +84,9 @@ mod tests {
 8000
 9000
 
-10000"), ("24000".to_string(), "45000".to_string()))
+10000"
+            ),
+            ("24000".to_string(), "45000".to_string())
+        )
     }
 }
