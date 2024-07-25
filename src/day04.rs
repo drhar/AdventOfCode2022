@@ -1,8 +1,29 @@
+use std::collections::HashSet;
+
 pub fn day04(input_lines: &str) -> (String, String) {
-    let _ = input_lines;
-    let answer1 = 0;
+    let answer1 = input_lines.lines().map(|line| {
+        let (elf1, elf2) = line.split_once(',').expect(&format!("{} Should be a comma separated pair", line));
+        let (elf1, elf2) = (parse_assignment(elf1), parse_assignment(elf2));
+        if full_overlap(elf1, elf2) {
+            1
+        } else {
+            0
+        }
+    }).sum::<i32>();
     let answer2 = 0;
     (format!("{}", answer1), format!("{}", answer2))
+}
+
+pub fn parse_assignment(assignment: &str) -> HashSet<i32> {
+    let (start, end) = assignment.split_once("-").expect(&format!("Expected a '-' separated pair of intergers for {}", assignment));
+    let start = start.parse::<i32>().expect(&format!("Expected number not {}", start));
+    let end = end.parse::<i32>().expect(&format!("Expected number not {}", end));
+    (start..=end).collect::<HashSet<i32>>()
+}
+
+pub fn full_overlap(assignment1: HashSet<i32>, assignment2: HashSet<i32>) -> bool {
+    let overlap: HashSet<_> = assignment1.intersection(&assignment2).collect();
+    overlap.len() == assignment1.len() || overlap.len() == assignment2.len()
 }
 
 #[cfg(test)]
@@ -11,7 +32,12 @@ mod tests {
 
     #[test]
     fn check_day04_part1_case1() {
-        assert_eq!(day04("").0, "0".to_string())
+        assert_eq!(day04("2-4,6-8
+2-3,4-5
+5-7,7-9
+2-8,3-7
+6-6,4-6
+2-6,4-8").0, "2".to_string())
     }
 
     #[test]
@@ -21,6 +47,11 @@ mod tests {
 
     #[test]
     fn check_day04_both_case1() {
-        assert_eq!(day04(""), ("0".to_string(), "0".to_string()))
+        assert_eq!(day04("2-4,6-8
+2-3,4-5
+5-7,7-9
+2-8,3-7
+6-6,4-6
+2-6,4-8"), ("2".to_string(), "0".to_string()))
     }
 }
