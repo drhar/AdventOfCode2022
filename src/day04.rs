@@ -15,7 +15,20 @@ pub fn day04(input_lines: &str) -> (String, String) {
             }
         })
         .sum::<i32>();
-    let answer2 = 0;
+    let answer2 = input_lines
+        .lines()
+        .map(|line| {
+            let (elf1, elf2) = line
+                .split_once(',')
+                .unwrap_or_else(|| panic!("{} Should be a comma separated pair", line));
+            let (elf1, elf2) = (parse_assignment(elf1), parse_assignment(elf2));
+            if !elf1.intersection(&elf2).collect::<HashSet<_>>().is_empty() {
+                1
+            } else {
+                0
+            }
+        })
+        .sum::<i32>();
     (format!("{}", answer1), format!("{}", answer2))
 }
 
@@ -76,7 +89,7 @@ mod tests {
 6-6,4-6
 2-6,4-8"
             ),
-            ("2".to_string(), "0".to_string())
+            ("2".to_string(), "4".to_string())
         )
     }
 }
