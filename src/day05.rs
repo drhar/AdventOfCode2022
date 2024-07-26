@@ -11,9 +11,7 @@ pub fn day05(input_lines: &str) -> (String, String) {
         }
         for (curr_crate, column) in line.chars().zip(crate_column_labels.chars()) {
             if curr_crate.is_alphabetic() {
-                let stack = crates
-                    .entry(column as usize - '0' as usize)
-                    .or_insert_with(Vec::new);
+                let stack = crates.entry(column as usize - '0' as usize).or_default();
                 stack.push(curr_crate);
             }
         }
@@ -34,7 +32,7 @@ pub fn day05(input_lines: &str) -> (String, String) {
     //     .map(|line| line.chars().filter(|c| c.is_alphabetic()).enumerate());
     let answer1 = read_diag(crates);
     let answer2 = read_diag(crates2);
-    (format!("{}", answer1), format!("{}", answer2))
+    (answer1.to_string(), answer2.to_string())
 }
 
 pub fn crate_mover(
@@ -56,7 +54,7 @@ pub fn crate_mover(
 }
 
 pub fn crate_mover_9000(
-    mut crates: HashMap<usize, Vec<char>>,
+    crates: HashMap<usize, Vec<char>>,
     quantity: usize,
     from: usize,
     to: usize,
@@ -65,7 +63,7 @@ pub fn crate_mover_9000(
 }
 
 pub fn crate_mover_9001(
-    mut crates: HashMap<usize, Vec<char>>,
+    crates: HashMap<usize, Vec<char>>,
     quantity: usize,
     from: usize,
     to: usize,
@@ -75,7 +73,7 @@ pub fn crate_mover_9001(
 
 pub fn read_diag(diag: HashMap<usize, Vec<char>>) -> String {
     let mut diag_summary = String::new();
-    for column in 1 as usize..*diag.keys().max().unwrap() + 1 {
+    for column in 1_usize..*diag.keys().max().unwrap() + 1 {
         diag_summary.push(*diag.get(&column).unwrap().last().unwrap());
     }
     diag_summary
