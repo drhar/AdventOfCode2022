@@ -17,7 +17,7 @@ pub fn day05(input_lines: &str) -> (String, String) {
         }
     }
     let mut crates2 = crates.clone();
-    let re = regex::Regex::new(r"move (\d*) from (\d*) to (\d*)").unwrap();
+    let re = regex::Regex::new(r"move (\d+) from (\d+) to (\d+)").unwrap();
     for instruction in re.captures_iter(instructions) {
         let (quantity, from, to) = (
             instruction[1].parse::<usize>().unwrap(),
