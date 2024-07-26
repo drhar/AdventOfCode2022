@@ -12,7 +12,7 @@ pub fn find_marker(message: &str, marker_len: usize) -> usize {
         .collect::<Vec<char>>()
         .windows(marker_len)
         .enumerate()
-        .take_while(|w| w.1.into_iter().unique().count() != marker_len)
+        .take_while(|w| w.1.iter().unique().count() != marker_len)
         .last()
         .unwrap();
     // Return postiion after _last_ char. Iterator is 0 indexed.
