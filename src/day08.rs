@@ -64,11 +64,13 @@ fn top_left_woodland_walk(
         row_count
     ];
     let mut top_maxes: Vec<i32> = vec![-1; column_count];
+    let mut bottom_maxes: Vec<i32> = vec![-1; column_count];
     let mut top_visible: Vec<HashSet<(usize, usize)>> = vec![HashSet::new(); column_count];
 
     let mut outside_visible =
         HashSet::from_iter(woodland.enumerate().flat_map(|(row_idx, row)| {
             let mut left_max: i32 = -1;
+            let mut right_max: i32 = -1;
             let row_left_visible = row
                 .chars()
                 .enumerate()
@@ -94,7 +96,6 @@ fn top_left_woodland_walk(
                     }
                     // Work out left view of tree
                     while left_view < x {
-                        // println!("Checking left view for ({}, {})", x, y);
                         let left_tree = &trees[y][x - left_view];
                         if left_tree.height >= height {
                             break;
@@ -105,7 +106,6 @@ fn top_left_woodland_walk(
                     // Update right view of previous trees. No trees left of our left_view could see us.
                     let mut left_tree_idx = x - left_view;
                     while left_tree_idx < x {
-                        // println!("Checking right view for ({}, {})", x, y);
                         let left_tree = &mut trees[y][left_tree_idx];
                         // We're to the right of this tree, so if it has no right view it's because it can see at least to us. If
                         // we're at the end of the row then this tree can see the whole way to the end.
@@ -123,7 +123,6 @@ fn top_left_woodland_walk(
                     // Right edge clean-up, any trees taller than us and to our left can see the whole way.
                     // No need to go further than heighest tree.
                     if x == column_count - 1 {
-                        println!("Right edge clean-up for ({}, {})", left_tree_idx, y);
                         let mut left_tree_idx = x - left_view;
                         let mut left_tree = &mut trees[y][left_tree_idx];
                         let mut left_highest = left_tree.height;
