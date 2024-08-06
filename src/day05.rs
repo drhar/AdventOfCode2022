@@ -104,11 +104,38 @@ move 1 from 1 to 2"
 
     #[test]
     fn check_day05_part2_case1() {
-        assert_eq!(day05("").1, "0".to_string())
+        assert_eq!(
+            day05(
+                "    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2"
+            )
+            .1,
+            "MCD".to_string()
+        )
     }
 
     #[test]
     fn check_day05_both_case1() {
-        assert_eq!(day05(""), ("0".to_string(), "0".to_string()))
+        assert_eq!(
+            day05(
+                "    [D]    
+[N] [C]    
+[Z] [M] [P]
+ 1   2   3 
+
+move 1 from 2 to 1
+move 3 from 1 to 3
+move 2 from 2 to 1
+move 1 from 1 to 2"
+            ),
+            ("CMZ".to_string(), "MCD".to_string())
+        )
     }
 }
