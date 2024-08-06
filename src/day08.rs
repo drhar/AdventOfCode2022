@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 
-const MAX_TREE_HEIGHT: i32 = 9;
-
 pub fn day08(input_lines: &str) -> (String, String) {
     let (visible, trees) = woodland_walk(input_lines);
     let answer1 = visible.len();
