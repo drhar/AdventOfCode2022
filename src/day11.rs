@@ -1,9 +1,11 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, digit1, line_ending, space0, space1},
+    character::complete::{char, digit1, line_ending, multispace0, space0, space1},
+    error::ParseError,
     multi::{many0, many1, separated_list1},
-    IResult,
+    sequence::delimited,
+    IResult, Parser,
 };
 
 pub fn day11(input_lines: &str) -> (String, String) {
@@ -56,10 +58,10 @@ pub fn run_simulation(input_lines: &str, rounds: i32, relief_factor: u64) -> Vec
     monkeys.sort_unstable_by(|a, b| a.id.cmp(&b.id));
 
     // All tests are "is divisible", we can therefore work out a "filter" where if the worry would pass all
-    // tests, then we can throw that worry away. Applying the filter looks like taking the modulo of the worry
+    // tests, we can throw that amount of worry away. Applying the filter looks like taking the modulo of the worry
     // with the filter. The filter is the product of the divisors.
     // e.g. if divisors are 3 & 5, filter is 15. Applying div 5 or div 3 tests to anything % filter is the same as
-    // applying it directly (e.g. 32 % 3 = 2, 2 % 3 = 2, 32 % 5 = 2, 2 % 5 =2)
+    // applying it directly (e.g. if worry is 32, filtered worry is 32 & 15 = 2. 32 % 3 = 2, 2 % 3 = 2, 32 % 5 = 2, 2 % 5 = 2)
     let worry_filter = monkeys.iter().map(|m| m.test_divisor).product::<u64>();
     assert_eq!(monkeys[0].id, 0);
     for _round in 0..rounds {
@@ -76,34 +78,18 @@ pub fn run_simulation(input_lines: &str, rounds: i32, relief_factor: u64) -> Vec
 }
 
 pub fn parse_monkey(buf: &str) -> IResult<&str, Monkey> {
-    let (buf, _) = many0(alt((space1, line_ending)))(buf)?;
-    let (buf, _) = tag("Monkey ")(buf)?;
+    let (buf, _) = remove_surr_whitespace(tag("Monkey ")).parse(buf)?;
     let (buf, id) = digit1(buf)?;
     let (buf, _) = char(':')(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = line_ending(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = tag("Starting items:")(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, items) = separated_list1(tag(", "), digit1)(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = line_ending(buf)?;
+    let (buf, _) = remove_surr_whitespace(tag("Starting items:")).parse(buf)?;
+    let (buf, items) = remove_surr_whitespace(separated_list1(tag(", "), digit1)).parse(buf)?;
     let (buf, operation) = parse_operation(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = tag("Test: divisible by ")(buf)?;
+    let (buf, _) = remove_surr_whitespace(tag("Test: divisible by ")).parse(buf)?;
     let (buf, test_divisor) = digit1(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = line_ending(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = tag("If true: throw to monkey ")(buf)?;
+    let (buf, _) = remove_surr_whitespace(tag("If true: throw to monkey ")).parse(buf)?;
     let (buf, throw_true) = digit1(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = line_ending(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = tag("If false: throw to monkey ")(buf)?;
-    let (buf, throw_false) = digit1(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = many0(alt((space1, line_ending)))(buf)?;
+    let (buf, _) = remove_surr_whitespace(tag("If false: throw to monkey ")).parse(buf)?;
+    let (buf, throw_false) = remove_surr_whitespace(digit1).parse(buf)?;
     Ok((
         buf,
         Monkey {
@@ -122,15 +108,11 @@ pub fn parse_monkey(buf: &str) -> IResult<&str, Monkey> {
 }
 
 pub fn parse_operation(buf: &str) -> IResult<&str, Box<dyn Fn(u64) -> u64>> {
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = tag("Operation: new = ")(buf)?;
+    let (buf, _) = remove_surr_whitespace(tag("Operation: new = ")).parse(buf)?;
     let (buf, operand1) = alt((digit1, tag("old")))(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, operator) = alt((tag("+"), tag("-"), tag("*"), tag("/")))(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, operand2) = alt((digit1, tag("old")))(buf)?;
-    let (buf, _) = space0(buf)?;
-    let (buf, _) = line_ending(buf)?;
+    let (buf, operator) =
+        remove_surr_whitespace(alt((tag("+"), tag("-"), tag("*"), tag("/")))).parse(buf)?;
+    let (buf, operand2) = remove_surr_whitespace(alt((digit1, tag("old")))).parse(buf)?;
     let operand1 = operand1.to_string();
     let operand2 = operand2.to_string();
     let operator = operator.to_string();
@@ -154,6 +136,16 @@ pub fn parse_operation(buf: &str) -> IResult<&str, Box<dyn Fn(u64) -> u64>> {
             }
         }),
     ))
+}
+
+// For a parser 'inner' return a parser that consumes (and discards) leading and trailing whitespace and newlines either side of 'inner'
+pub fn remove_surr_whitespace<'a, O, E: ParseError<&'a str>, F>(
+    inner: F,
+) -> (impl Parser<&'a str, O, E>)
+where
+    F: Parser<&'a str, O, E>,
+{
+    delimited(multispace0, inner, multispace0)
 }
 
 #[cfg(test)]
