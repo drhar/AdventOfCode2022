@@ -1,9 +1,9 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, digit1, line_ending, multispace0, space0, space1},
+    character::complete::{char, digit1, multispace0},
     error::ParseError,
-    multi::{many0, many1, separated_list1},
+    multi::{many1, separated_list1},
     sequence::delimited,
     IResult, Parser,
 };
@@ -141,7 +141,7 @@ pub fn parse_operation(buf: &str) -> IResult<&str, Box<dyn Fn(u64) -> u64>> {
 // For a parser 'inner' return a parser that consumes (and discards) leading and trailing whitespace and newlines either side of 'inner'
 pub fn remove_surr_whitespace<'a, O, E: ParseError<&'a str>, F>(
     inner: F,
-) -> (impl Parser<&'a str, O, E>)
+) -> impl Parser<&'a str, O, E>
 where
     F: Parser<&'a str, O, E>,
 {
