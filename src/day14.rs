@@ -57,7 +57,7 @@ impl Cave {
                 .map(|tile| {
                     let coords = tile
                         .trim()
-                        .split(",")
+                        .split(',')
                         .map(|coord| coord.parse::<i32>().unwrap())
                         .collect::<Vec<i32>>();
                     (coords[0], coords[1])
