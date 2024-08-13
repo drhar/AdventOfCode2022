@@ -55,12 +55,11 @@ impl Cave {
             let path: Vec<(i32, i32)> = path
                 .split("->")
                 .map(|tile| {
-                    let coords = tile
-                        .trim()
-                        .split(',')
-                        .map(|coord| coord.parse::<i32>().unwrap())
-                        .collect::<Vec<i32>>();
-                    (coords[0], coords[1])
+                    let coords = tile.trim().split_once(',').unwrap();
+                    (
+                        coords.0.parse::<i32>().unwrap(),
+                        coords.1.parse::<i32>().unwrap(),
+                    )
                 })
                 .collect();
             for path_vec in path.windows(2) {
