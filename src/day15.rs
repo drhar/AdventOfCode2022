@@ -208,10 +208,8 @@ impl SensorMap {
                     if search_for.contains(&GridSquare::Beacon) {
                         row.push((x, y));
                     }
-                } else {
-                    if search_for.contains(&GridSquare::Empty) {
-                        row.push((x, y));
-                    }
+                } else if search_for.contains(&GridSquare::Empty) {
+                    row.push((x, y));
                 }
                 x += 1;
                 if x > max_x {

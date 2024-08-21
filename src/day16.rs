@@ -274,9 +274,9 @@ impl TunnelSystem {
 
             // Build a vector of the possible next actions for each explorer
             let mut explorers_actions: Vec<Vec<ExplorerAction>> = Vec::new();
-            for explorer in 0..results.len() {
+            for explorer in &results {
                 let mut explorer_actions: Vec<ExplorerAction> = Vec::new();
-                match &results[explorer] {
+                match explorer {
                     ExplorerResult::Ok(valve_name) => {
                         let valve = self.valve_scan.get(valve_name).unwrap();
                         if !path.open_valves.contains(&valve.name) {
@@ -342,9 +342,9 @@ impl TunnelSystem {
         // their flow rates properly, but lifes too short.
         let mut locations = path.locations.clone();
         locations.sort();
-        let prior_visits = self.exploration_states.get(&locations);
-        let prior_visits = if prior_visits.is_some() {
-            prior_visits.unwrap()
+
+        let prior_visits = if let Some(visits) = self.exploration_states.get(&locations) {
+            visits
         } else {
             self.exploration_states.insert(
                 locations,
