@@ -98,7 +98,7 @@ impl Chamber {
     pub fn new(width: usize, rock_wave: VecDeque<RockType>, jet_scan: VecDeque<Jet>) -> Self {
         // We're using bits as bits of space, with 1 as a rock and 0 as empty space. The floor and walls are all rock.
         // We want the cavern width + 2 walls all set to 1.
-        let floor: u32 = (1 << width + 2) - 1;
+        let floor: u32 = (1 << (width + 2)) - 1;
 
         Self {
             contents: vec![floor],
@@ -108,7 +108,7 @@ impl Chamber {
             rock_generator: (rock_wave.clone(), repeat(rock_wave)),
             jet_generator: (jet_scan.clone(), repeat(jet_scan)),
             // 1000....0001
-            empty_layer: 1 << width + 1 | 1,
+            empty_layer: 1 << (width + 1) | 1,
             repeating_unit_layer_start: 0,
             repeating_unit_height: 0,
             repeating_unit_rock_count: 0,
@@ -273,8 +273,8 @@ impl Chamber {
                         .enumerate()
                         .any(|(i, &layer)| layer << 1 & self.contents[rocks_bottom + i] != 0)
                     {
-                        for level in 0..rock.height {
-                            rock_space[level] <<= 1;
+                        for rock_layer in rock_space.iter_mut() {
+                            *rock_layer <<= 1;
                         }
                     }
                 }
@@ -284,8 +284,8 @@ impl Chamber {
                         .enumerate()
                         .any(|(i, &layer)| layer >> 1 & self.contents[rocks_bottom + i] != 0)
                     {
-                        for level in 0..rock.height {
-                            rock_space[level] >>= 1;
+                        for rock_layer in rock_space.iter_mut() {
+                            *rock_layer >>= 1;
                         }
                     }
                 }
