@@ -92,6 +92,7 @@ impl Command<'_> {
 }
 
 pub struct Node {
+    #[allow(dead_code)]
     name: String,
     child_names: Vec<String>,
     children: Vec<Node>,

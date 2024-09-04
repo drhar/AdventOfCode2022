@@ -1,28 +1,25 @@
-use core::time;
+// Firt I didn't read the problem properly and thought I could build as many robots a day as I could,
+// then I worked out the optimisation of stepping by robot rather than by minute. But I didn't want to
+// rip out that code (I would on a prdouction project, but always useful to have this stuff for my future use).
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::future;
 use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use regex::Regex;
 
 pub fn day19(input_lines: &str) -> (String, String) {
-    let mut factories = input_lines
+    let factories = input_lines
         .lines()
         .map(RobotFactory::from_blueprint)
         .collect::<Vec<RobotFactory>>();
-    let mut resource_inventory = Inventory::new();
+    let resource_inventory = Inventory::new();
     let mut robot_inventory = Inventory::new();
     robot_inventory.add_resource(&Material::Ore, 1u32);
 
     let answer1 = factories
         .iter()
         .map(|factory| {
-            let score = maximise_geodes(
-                24,
-                factory,
-                resource_inventory.clone(),
-                robot_inventory.clone(),
-            ) * factory.id;
+            let score =
+                maximise_geodes(24, factory, resource_inventory, robot_inventory) * factory.id;
             println!("Factory: {}, Score: {}", factory.id, score);
             score
         })
@@ -30,14 +27,7 @@ pub fn day19(input_lines: &str) -> (String, String) {
     let answer2 = factories
         .iter()
         .take(3)
-        .map(|factory| {
-            maximise_geodes(
-                32,
-                factory,
-                resource_inventory.clone(),
-                robot_inventory.clone(),
-            )
-        })
+        .map(|factory| maximise_geodes(32, factory, resource_inventory, robot_inventory))
         .product::<u32>();
     (format!("{}", answer1), format!("{}", answer2))
 }
@@ -114,29 +104,49 @@ impl Mul<u32> for Inventory {
     }
 }
 
-impl Ord for Inventory {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+// impl Ord for Inventory {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         if self.geode == other.geode
+//             && self.ore == other.ore
+//             && self.clay == other.clay
+//             && self.obsidian == other.obsidian
+//         {
+//             std::cmp::Ordering::Equal
+//         } else if self.geode >= other.geode
+//             && self.ore >= other.ore
+//             && self.clay >= other.clay
+//             && self.obsidian >= other.obsidian
+//         {
+//             std::cmp::Ordering::Greater
+//         } else {
+//             std::cmp::Ordering::Less
+//         }
+//     }
+// }
+
+impl PartialOrd for Inventory {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         if self.geode == other.geode
             && self.ore == other.ore
             && self.clay == other.clay
             && self.obsidian == other.obsidian
         {
-            std::cmp::Ordering::Equal
+            Some(std::cmp::Ordering::Equal)
         } else if self.geode >= other.geode
             && self.ore >= other.ore
             && self.clay >= other.clay
             && self.obsidian >= other.obsidian
         {
-            std::cmp::Ordering::Greater
+            Some(std::cmp::Ordering::Greater)
+        } else if self.geode <= other.geode
+            && self.ore <= other.ore
+            && self.clay <= other.clay
+            && self.obsidian <= other.obsidian
+        {
+            Some(std::cmp::Ordering::Less)
         } else {
-            std::cmp::Ordering::Less
+            None
         }
-    }
-}
-
-impl PartialOrd for Inventory {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -208,6 +218,20 @@ pub struct ProductionState {
     resource_inventory: Inventory,
 }
 
+impl Ord for ProductionState {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.resource_inventory
+            .geode
+            .cmp(&other.resource_inventory.geode)
+    }
+}
+
+impl PartialOrd for ProductionState {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl ProductionState {
     fn max_possible_geodes(&self) -> u32 {
         // If we produced a Geode robot every minute, how many Geodes would we produce
@@ -277,22 +301,43 @@ impl RobotFactory {
         }
     }
 
+    #[allow(dead_code)]
     pub fn affordable_robots(&self, resources: &Inventory) -> Vec<&Material> {
         let mut affordable_bots = vec![];
         for (robot_type, cost) in self.price_list.iter() {
             if resources >= cost {
-                affordable_bots.push(robot_type.clone());
+                affordable_bots.push(robot_type);
             }
         }
         affordable_bots
     }
 
+    pub fn buildable_robots(&self, available_robots: &Inventory) -> Vec<&Material> {
+        // We can only gather resources that we have robots for. A robot is "buildable" if we have robots to gather all the resources it needs.
+        let mut buildable_bots = vec![];
+        // println!("{:?}", available_robots);
+        for (robot_type, cost) in self.price_list.iter() {
+            if cost.iter().all(|(resource, cost)| {
+                if *cost > 0 {
+                    available_robots.resource_stock(&resource) > 0
+                } else {
+                    true
+                }
+            }) {
+                buildable_bots.push(robot_type);
+            }
+        }
+        buildable_bots
+    }
+
+    #[allow(dead_code)]
     // This helpful factory will tell you every possible thing you can buy if you hand over your wallet :)
     pub fn possible_robots(&self, resources: &Inventory) -> Vec<Inventory> {
         let robot_purchase_order = Inventory::new();
         self.affordable_robot_combos(resources, &robot_purchase_order)
     }
 
+    #[allow(dead_code)]
     fn affordable_robot_combos(
         &self,
         resources: &Inventory,
@@ -302,7 +347,7 @@ impl RobotFactory {
         for (robot_type, cost) in self.price_list.iter() {
             if resources >= cost {
                 let new_resources = *resources - *cost;
-                let mut new_combo = current_combo.clone();
+                let mut new_combo = *current_combo;
                 new_combo.add_resource(robot_type, 1);
                 results.push(new_combo);
                 results.extend(self.affordable_robot_combos(&new_resources, &new_combo));
@@ -311,8 +356,8 @@ impl RobotFactory {
         results
     }
 
-    pub fn robot_cost(&self, robot_type: &Material) -> Inventory {
-        self.price_list.get(&robot_type).unwrap().clone()
+    pub fn robot_cost(&self, robot_type: &Material) -> &Inventory {
+        self.price_list.get(robot_type).unwrap()
     }
 }
 
@@ -322,7 +367,6 @@ pub fn maximise_geodes(
     resource_inventory: Inventory,
     robot_inventory: Inventory,
 ) -> u32 {
-    println!("{:?}", factory);
     let mut seen = HashSet::new();
     let mut queue = VecDeque::new();
     queue.push_back(ProductionState {
@@ -330,72 +374,81 @@ pub fn maximise_geodes(
         robot_inventory,
         resource_inventory,
     });
-    let mut max_geodes = 0;
-    let mut print = true;
+    let mut best = ProductionState {
+        time_remaining: 0,
+        robot_inventory: Inventory::new(),
+        resource_inventory: Inventory::new(),
+    };
     let mut count = 0;
 
-    while let Some(mut production_state) = queue.pop_front() {
-        if count > 25 {
-            print = false;
-        }
+    while let Some(production_state) = queue.pop_front() {
         count += 1;
         if count % 10000 == 0 {
             println!(
-                "count: {}, t: {}, q_len: {}, max_geodes: {}",
+                "factory: {}, count: {}, t: {}, q_len: {}, max_geodes: {}",
+                &factory.id,
                 count,
                 production_state.time_remaining,
                 queue.len(),
-                max_geodes
+                best.resource_inventory.resource_stock(&Material::Geode)
             );
         }
         if production_state.time_remaining == 0 {
-            max_geodes = max_geodes.max(production_state.resource_inventory.geode);
+            if production_state > best {
+                best = production_state;
+            }
             continue;
         } else {
-            // let mut possible_robots = factory.possible_robots(&production_state.resource_inventory);
-            // println!("{:?}", possible_robots);
-            if production_state.max_possible_geodes() <= max_geodes {
+            if production_state.max_possible_geodes()
+                <= best.resource_inventory.resource_stock(&Material::Geode)
+            {
                 continue;
             }
-            max_geodes = max_geodes.max(
-                production_state
-                    .resource_inventory
-                    .resource_stock(&Material::Geode),
-            );
+            if production_state > best {
+                best = production_state.clone();
+            }
 
-            let affordable_robots = factory.affordable_robots(&production_state.resource_inventory);
-            production_state = mine(production_state);
+            // If we check every minute what robots we can afford and choose to build or not build them, we'll end up with huge numbers of states
+            // where we wait one turn and then build a robot. This is a waste of time. Instead, we can check what robots are possible to build and then
+            // fast forward to that state.
+            let buildable_robots = factory.buildable_robots(&production_state.robot_inventory);
 
-            for robot in &affordable_robots {
+            for robot in buildable_robots {
                 if production_state.robot_inventory.resource_stock(robot)
                     >= factory.robot_maximums.resource_stock(robot)
-                    && robot != &&Material::Geode
+                    && robot != &Material::Geode
                 {
                     // We don't need any more of these robots.
                     continue;
                 }
-                let mut future_state = build(
-                    production_state.clone(),
-                    Inventory::from_vec(vec![(robot, 1)]),
-                    &factory,
-                );
+                let mut future_state = production_state.clone();
+                let robot_cost = factory.robot_cost(robot);
+                while future_state.resource_inventory.partial_cmp(robot_cost)
+                    != Some(std::cmp::Ordering::Greater)
+                    && future_state.resource_inventory.partial_cmp(robot_cost)
+                        != Some(std::cmp::Ordering::Equal)
+                    && future_state.time_remaining > 0
+                {
+                    future_state = mine(future_state);
+                    future_state.time_remaining -= 1;
+                }
+                if future_state.time_remaining == 0 {
+                    if future_state > best {
+                        best = future_state;
+                    }
+                    continue;
+                }
+                // We fast forward to the start of a turn, so should mine, then build the robot.
+                future_state = mine(future_state);
+                future_state = build(future_state, Inventory::from_vec(vec![(robot, 1)]), factory);
                 future_state.time_remaining -= 1;
                 if seen.insert(future_state.clone()) {
                     queue.push_back(future_state);
                 }
             }
-            // for robots in possible_robots {
-            //     let mut future_state = build(production_state.clone(), robots, &factory);
-            //     future_state.time += 1;
-            //     queue.push_back(future_state);
-            // }
-            production_state.time_remaining -= 1;
-            if seen.insert(production_state.clone()) {
-                queue.push_back(production_state);
-            }
         }
     }
-    max_geodes
+    best.resource_inventory.resource_stock(&Material::Geode)
 }
 
 pub fn mine(mut state: ProductionState) -> ProductionState {
@@ -410,7 +463,10 @@ pub fn build(
 ) -> ProductionState {
     state.robot_inventory += robots_to_build;
     for (robot, count) in robots_to_build.iter() {
-        state.resource_inventory -= robot_factory.robot_cost(&robot) * *count;
+        if count == &0 {
+            continue;
+        }
+        state.resource_inventory -= *robot_factory.robot_cost(&robot) * *count;
     }
     state
 }
@@ -430,13 +486,13 @@ Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsid
     fn check_day19_part2_case1() {
         assert_eq!(day19("Blueprint 1: Each ore robot costs 4 ore. Each clay robot costs 2 ore. Each obsidian robot costs 3 ore and 14 clay. Each geode robot costs 2 ore and 7 obsidian.
 Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsidian robot costs 3 ore and 8 clay. Each geode robot costs 3 ore and 12 obsidian."
-).1, "0".to_string())
+).1, "3472".to_string())
     }
 
     #[test]
     fn check_day19_both_case1() {
         assert_eq!(day19("Blueprint 1: Each ore robot costs 4 ore. Each clay robot costs 2 ore. Each obsidian robot costs 3 ore and 14 clay. Each geode robot costs 2 ore and 7 obsidian.
 Blueprint 2: Each ore robot costs 2 ore. Each clay robot costs 3 ore. Each obsidian robot costs 3 ore and 8 clay. Each geode robot costs 3 ore and 12 obsidian."
-), ("33".to_string(), "0".to_string()))
+), ("33".to_string(), "3472".to_string()))
     }
 }
