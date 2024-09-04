@@ -13,7 +13,7 @@ pub fn day18(input_lines: &str) -> (String, String) {
 }
 
 pub struct Droplet {
-    grid: Vec<Vec<u32>>,
+    pub grid: Vec<Vec<u32>>,
     steamed_grid: Option<Vec<Vec<u32>>>,
     max_z: usize,
 }
