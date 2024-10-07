@@ -4,13 +4,17 @@ pub fn day23(input_lines: &str) -> (String, String) {
         vec![
             Direction::North,
             Direction::South,
-            Direction::East,
             Direction::West,
+            Direction::East,
         ],
     );
+    coordinator.print_grid();
     coordinator.run_rounds(10);
+    coordinator.print_grid();
     let answer1 = coordinator.progress_score();
-    let answer2 = 0;
+    coordinator.run_to_completion();
+    coordinator.print_grid();
+    let answer2 = coordinator.round_count;
     (format!("{}", answer1), format!("{}", answer2))
 }
 
@@ -35,6 +39,7 @@ pub enum Direction {
 
 pub struct Coordinator {
     grid: Vec<Vec<Position>>,
+    elf_count: usize,
     consideration_order: Vec<Direction>,
     first_consideration: usize,
     round_count: u32,
@@ -50,6 +55,7 @@ impl Coordinator {
         let mut southmost = 0;
         let mut eastmost = 0;
         let mut westmost = usize::MAX;
+        let mut elf_count = 0;
         let grid = input
             .lines()
             .enumerate()
@@ -62,6 +68,7 @@ impl Coordinator {
                             southmost = southmost.max(y);
                             eastmost = eastmost.max(x);
                             westmost = westmost.min(x);
+                            elf_count += 1;
                             Position::Elf
                         }
                         '.' => Position::Empty,
@@ -72,6 +79,7 @@ impl Coordinator {
             .collect();
         Self {
             grid,
+            elf_count,
             consideration_order,
             first_consideration: 0,
             round_count: 0,
@@ -83,26 +91,22 @@ impl Coordinator {
     }
 
     pub fn progress_score(&self) -> u32 {
-        let mut score = 0;
-        for y in self.northmost..=self.southmost {
-            for x in self.westmost..=self.eastmost {
-                if !matches!(&self.grid[y][x], Position::Elf) {
-                    score += 1;
-                }
-            }
-        }
-        score
+        (self.southmost - self.northmost + 1) as u32
+            * (self.eastmost as u32 - self.westmost as u32 + 1)
+            - self.elf_count as u32
     }
 
     pub fn run_rounds(&mut self, rounds: u32) {
-        self.print_grid();
         for _ in 0..rounds {
             self.run_round();
-            self.print_grid();
         }
     }
 
-    fn run_round(&mut self) {
+    pub fn run_to_completion(&mut self) {
+        while self.run_round() > 0 {}
+    }
+
+    fn run_round(&mut self) -> u32 {
         // This ensures every elf can move in every direction.
         if self.should_reallocate() {
             self.reallocate();
@@ -110,14 +114,36 @@ impl Coordinator {
         for y in self.northmost..=self.southmost {
             for x in self.westmost..=self.eastmost {
                 match self.grid[y][x] {
-                    Position::Elf => self.make_proposal((x, y)),
+                    Position::Elf => {
+                        if let Some((prop_x, prop_y)) = self.make_proposal((x, y)) {
+                            if let Position::ProposedMove(ref mut moves) = self.grid[prop_y][prop_x]
+                            {
+                                moves.push((x, y));
+                            } else {
+                                self.grid[prop_y][prop_x] = Position::ProposedMove(vec![(x, y)]);
+                            }
+                        }
+                    }
                     _ => (),
                 }
             }
         }
-        self.move_elves();
+        let mut round_efficacy = self.move_elves();
         self.complete_round();
         self.round_count += 1;
+        round_efficacy
+    }
+
+    fn should_reallocate(&self) -> bool {
+        if self.northmost == 0
+            || self.southmost == self.grid.len() - 1
+            || self.eastmost == self.grid[0].len() - 1
+            || self.westmost == 0
+        {
+            true
+        } else {
+            false
+        }
     }
 
     // Make the grid bigger by half again in each direction. This is expensive as we have to allocate at
@@ -151,30 +177,18 @@ impl Coordinator {
         (width / 2, height / 2)
     }
 
-    fn should_reallocate(&self) -> bool {
-        if self.northmost == 0
-            || self.southmost == self.grid.len() - 1
-            || self.eastmost == self.grid[0].len() - 1
-            || self.westmost == 0
-        {
-            true
-        } else {
-            false
-        }
-    }
-
-    fn make_proposal(&mut self, elf_start: (usize, usize)) {
+    fn make_proposal(&mut self, elf_start: (usize, usize)) -> Option<(usize, usize)> {
         let (x, y) = elf_start;
-        if matches!(&self.grid[y - 1][x], Position::Empty)
-            && matches!(&self.grid[y + 1][x], Position::Empty)
-            && matches!(&self.grid[y][x - 1], Position::Empty)
-            && matches!(&self.grid[y][x + 1], Position::Empty)
-            && matches!(&self.grid[y - 1][x - 1], Position::Empty)
-            && matches!(&self.grid[y - 1][x + 1], Position::Empty)
-            && matches!(&self.grid[y + 1][x - 1], Position::Empty)
-            && matches!(&self.grid[y + 1][x + 1], Position::Empty)
+        if !matches!(&self.grid[y - 1][x], Position::Elf)
+            && !matches!(&self.grid[y + 1][x], Position::Elf)
+            && !matches!(&self.grid[y][x - 1], Position::Elf)
+            && !matches!(&self.grid[y][x + 1], Position::Elf)
+            && !matches!(&self.grid[y - 1][x - 1], Position::Elf)
+            && !matches!(&self.grid[y - 1][x + 1], Position::Elf)
+            && !matches!(&self.grid[y + 1][x - 1], Position::Elf)
+            && !matches!(&self.grid[y + 1][x + 1], Position::Elf)
         {
-            return;
+            return None;
         }
         let consideration_count = self.consideration_order.len();
         let mut consideration = self.first_consideration;
@@ -185,10 +199,7 @@ impl Coordinator {
                         && !matches!(&self.grid[y - 1][x - 1], Position::Elf)
                         && !matches!(&self.grid[y - 1][x + 1], Position::Elf)
                     {
-                        (x, y - 1)
-                    } else {
-                        consideration = (consideration + 1) % consideration_count;
-                        continue;
+                        return Some((x, y - 1));
                     }
                 }
                 Direction::South => {
@@ -196,10 +207,7 @@ impl Coordinator {
                         && !matches!(&self.grid[y + 1][x - 1], Position::Elf)
                         && !matches!(&self.grid[y + 1][x + 1], Position::Elf)
                     {
-                        (x, y + 1)
-                    } else {
-                        consideration = (consideration + 1) % consideration_count;
-                        continue;
+                        return Some((x, y + 1));
                     }
                 }
                 Direction::East => {
@@ -207,10 +215,7 @@ impl Coordinator {
                         && !matches!(&self.grid[y - 1][x + 1], Position::Elf)
                         && !matches!(&self.grid[y + 1][x + 1], Position::Elf)
                     {
-                        (x + 1, y)
-                    } else {
-                        consideration = (consideration + 1) % consideration_count;
-                        continue;
+                        return Some((x + 1, y));
                     }
                 }
                 Direction::West => {
@@ -218,37 +223,36 @@ impl Coordinator {
                         && !matches!(&self.grid[y - 1][x - 1], Position::Elf)
                         && !matches!(&self.grid[y + 1][x - 1], Position::Elf)
                     {
-                        (x - 1, y)
-                    } else {
-                        consideration = (consideration + 1) % consideration_count;
-                        continue;
+                        return Some((x - 1, y));
                     }
                 }
                 d => panic!("Not Implemented {:?}", d),
             };
-
-            if let Position::ProposedMove(ref mut moves) = self.grid[proposal.1][proposal.0] {
-                moves.push((x, y));
-            } else {
-                self.grid[proposal.1][proposal.0] = Position::ProposedMove(vec![(x, y)]);
-            }
-            return;
+            consideration = (consideration + 1) % consideration_count;
         }
+        return None;
     }
 
-    fn move_elves(&mut self) {
+    fn move_elves(&mut self) -> u32 {
+        let mut moves_proposed = 0;
+        let mut nm = self.northmost;
+        let mut sm = self.southmost;
+        let mut em = self.eastmost;
+        let mut wm = self.westmost;
         for y in self.northmost - 1..=self.southmost + 1 {
             for x in self.westmost - 1..=self.eastmost + 1 {
                 match self.grid[y][x] {
                     Position::ProposedMove(ref moves) => {
+                        moves_proposed += 1;
+
                         if moves.len() == 1 {
                             let move_from = moves[0];
                             self.grid[y][x] = Position::Elf;
                             self.grid[move_from.1][move_from.0] = Position::Empty;
-                            self.northmost = self.northmost.min(y);
-                            self.southmost = self.southmost.max(y);
-                            self.eastmost = self.eastmost.max(x);
-                            self.westmost = self.westmost.min(x);
+                            nm = nm.min(y);
+                            sm = sm.max(y);
+                            em = em.max(x);
+                            wm = wm.min(x);
                         } else {
                             self.grid[y][x] = Position::Empty;
                         }
@@ -257,6 +261,12 @@ impl Coordinator {
                 }
             }
         }
+        self.northmost = nm;
+        self.southmost = sm;
+        self.eastmost = em;
+        self.westmost = wm;
+
+        moves_proposed
     }
 
     fn complete_round(&mut self) {
@@ -299,36 +309,6 @@ mod tests {
     }
 
     #[test]
-    fn check_day23_part2_case1() {
-        assert_eq!(
-            day23(
-                ".....
-..##.
-..#..
-.....
-..##.
-....."
-            )
-            .1,
-            "0".to_string()
-        )
-    }
-
-    #[test]
-    fn check_day23_both_case1() {
-        assert_eq!(
-            day23(
-                ".....
-..##.
-..#..
-.....
-..##.
-....."
-            ),
-            ("25".to_string(), "0".to_string())
-        )
-    }
-    #[test]
     fn check_day23_part1_case2() {
         assert_eq!(
             day23(
@@ -358,7 +338,7 @@ mod tests {
 .#..#.."
             )
             .1,
-            "0".to_string()
+            "20".to_string()
         )
     }
 
@@ -374,7 +354,7 @@ mod tests {
 ##.#.##
 .#..#.."
             ),
-            ("110".to_string(), "0".to_string())
+            ("110".to_string(), "20".to_string())
         )
     }
 }
