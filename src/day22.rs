@@ -1,7 +1,6 @@
 // Intentionally did this using Rc/Wk/RefCell to get a better understanding of how they work, meaning a horrible design of self-referential
 // structures. I might return to this and remove those bits and store the edge relations in an Outline struct along with the ordering etc.
 // instead.
-
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
@@ -261,14 +260,14 @@ impl Map for BoardMap {
 }
 
 #[derive(Debug)]
-pub struct Edge<'a> {
+pub struct Edge {
     start: (usize, usize),
     end: (usize, usize),
     direction: (i32, i32),
-    connected_edge: Option<Weak<RefCell<Edge<'a>>>>,
+    connected_edge: Option<Weak<RefCell<Edge>>>,
 }
 
-impl<'a> Edge<'a> {
+impl Edge {
     pub fn new(start: (usize, usize), end: (usize, usize), direction: (i32, i32)) -> Self {
         Self {
             start,
@@ -304,7 +303,7 @@ impl<'a> Edge<'a> {
         )
     }
 
-    pub fn connect(&mut self, other: Weak<RefCell<Edge<'a>>>) {
+    pub fn connect(&mut self, other: Weak<RefCell<Edge>>) {
         self.connected_edge = Some(other);
     }
 
@@ -324,12 +323,12 @@ impl<'a> Edge<'a> {
     }
 }
 
-pub struct CubeMap<'a> {
+pub struct CubeMap {
     tiles: Vec<Vec<Tile>>,
-    outline: Vec<Rc<RefCell<Edge<'a>>>>,
+    outline: Vec<Rc<RefCell<Edge>>>,
 }
 
-impl CubeMap<'_> {
+impl CubeMap {
     pub fn from_str(input: &str, face_size: usize) -> Self {
         let map_width = input.lines().map(|line| line.len()).max().unwrap();
         let tiles = input
@@ -467,7 +466,7 @@ impl CubeMap<'_> {
         for edges_to_skip in [0, 2, 4, 6].iter() {
             for i in 0..outline.len() {
                 let edge = &outline[i];
-                if let Some(_) = edge.borrow().connected_edge {
+                if edge.borrow().connected_edge.is_some() {
                     continue;
                 }
                 let next_edge = &outline[(i + *edges_to_skip + 1) % outline.len()];
@@ -483,8 +482,8 @@ impl CubeMap<'_> {
                     && next_edge.borrow().connected_edge.is_none()
                 {
                     println!("Connecting {:?} to {:?}", edge.borrow(), next_edge.borrow());
-                    edge.borrow_mut().connect(Rc::downgrade(&next_edge));
-                    next_edge.borrow_mut().connect(Rc::downgrade(&edge));
+                    edge.borrow_mut().connect(Rc::downgrade(next_edge));
+                    next_edge.borrow_mut().connect(Rc::downgrade(edge));
                 }
             }
         }
@@ -492,7 +491,7 @@ impl CubeMap<'_> {
     }
 }
 
-impl Map for CubeMap<'_> {
+impl Map for CubeMap {
     fn get_map_length(&self) -> usize {
         self.tiles.len()
     }
