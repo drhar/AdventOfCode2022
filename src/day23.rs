@@ -8,12 +8,12 @@ pub fn day23(input_lines: &str) -> (String, String) {
             Direction::East,
         ],
     );
-    coordinator.print_grid();
+    coordinator.print_scoring_grid();
     coordinator.run_rounds(10);
-    coordinator.print_grid();
+    coordinator.print_scoring_grid();
     let answer1 = coordinator.progress_score();
     coordinator.run_to_completion();
-    coordinator.print_grid();
+    coordinator.print_scoring_grid();
     let answer2 = coordinator.round_count;
     (format!("{}", answer1), format!("{}", answer2))
 }
@@ -174,6 +174,8 @@ impl Coordinator {
         self.southmost += height / 2;
         self.eastmost += width / 2;
         self.westmost += width / 2;
+        println!("Reallocated grid");
+        self.print_grid();
         (width / 2, height / 2)
     }
 
@@ -261,6 +263,28 @@ impl Coordinator {
                 }
             }
         }
+        // We need to check that all our elves haven't moved out of the extreme rows (inwards). Things can
+        // only move at most one row and we don't need to check if the extreme has got more extreme.
+        if self.northmost == nm {
+            if self.grid[nm].iter().all(|p| matches!(p, Position::Empty)) {
+                nm += 1;
+            }
+        }
+        if self.southmost == sm {
+            if self.grid[sm].iter().all(|p| matches!(p, Position::Empty)) {
+                sm -= 1;
+            }
+        }
+        if self.eastmost == em {
+            if self.grid.iter().all(|r| matches!(r[em], Position::Empty)) {
+                em -= 1;
+            }
+        }
+        if self.westmost == wm {
+            if self.grid.iter().all(|r| matches!(r[wm], Position::Empty)) {
+                wm += 1;
+            }
+        }
         self.northmost = nm;
         self.southmost = sm;
         self.eastmost = em;
@@ -273,7 +297,23 @@ impl Coordinator {
         self.first_consideration = (self.first_consideration + 1) % self.consideration_order.len();
     }
 
+    pub fn print_scoring_grid(&self) {
+        println!("Scoring Grid:\n");
+        for y in self.northmost..=self.southmost {
+            for x in self.westmost..=self.eastmost {
+                match self.grid[y][x] {
+                    Position::Elf => print!("#"),
+                    Position::Empty => print!("."),
+                    Position::ProposedMove(_) => print!("?"), // Assuming '?' for proposed moves
+                }
+            }
+            println!();
+        }
+        println!();
+    }
+
     pub fn print_grid(&self) {
+        println!("Grid:\n");
         for row in &self.grid {
             for pos in row {
                 match pos {
