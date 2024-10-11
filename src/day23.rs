@@ -31,10 +31,6 @@ pub enum Direction {
     South,
     East,
     West,
-    NorthEast,
-    NorthWest,
-    SouthEast,
-    SouthWest,
 }
 
 pub struct Coordinator {
@@ -113,37 +109,28 @@ impl Coordinator {
         }
         for y in self.northmost..=self.southmost {
             for x in self.westmost..=self.eastmost {
-                match self.grid[y][x] {
-                    Position::Elf => {
-                        if let Some((prop_x, prop_y)) = self.make_proposal((x, y)) {
-                            if let Position::ProposedMove(ref mut moves) = self.grid[prop_y][prop_x]
-                            {
-                                moves.push((x, y));
-                            } else {
-                                self.grid[prop_y][prop_x] = Position::ProposedMove(vec![(x, y)]);
-                            }
+                if let Position::Elf = self.grid[y][x] {
+                    if let Some((prop_x, prop_y)) = self.make_proposal((x, y)) {
+                        if let Position::ProposedMove(ref mut moves) = self.grid[prop_y][prop_x] {
+                            moves.push((x, y));
+                        } else {
+                            self.grid[prop_y][prop_x] = Position::ProposedMove(vec![(x, y)]);
                         }
                     }
-                    _ => (),
                 }
             }
         }
-        let mut round_efficacy = self.move_elves();
+        let round_efficacy = self.move_elves();
         self.complete_round();
         self.round_count += 1;
         round_efficacy
     }
 
     fn should_reallocate(&self) -> bool {
-        if self.northmost == 0
+        self.northmost == 0
             || self.southmost == self.grid.len() - 1
             || self.eastmost == self.grid[0].len() - 1
             || self.westmost == 0
-        {
-            true
-        } else {
-            false
-        }
     }
 
     // Make the grid bigger by half again in each direction. This is expensive as we have to allocate at
@@ -195,7 +182,7 @@ impl Coordinator {
         let consideration_count = self.consideration_order.len();
         let mut consideration = self.first_consideration;
         for _ in 0..consideration_count {
-            let proposal = match &self.consideration_order[consideration] {
+            match &self.consideration_order[consideration] {
                 Direction::North => {
                     if !matches!(&self.grid[y - 1][x], Position::Elf)
                         && !matches!(&self.grid[y - 1][x - 1], Position::Elf)
@@ -228,11 +215,10 @@ impl Coordinator {
                         return Some((x - 1, y));
                     }
                 }
-                d => panic!("Not Implemented {:?}", d),
             };
             consideration = (consideration + 1) % consideration_count;
         }
-        return None;
+        None
     }
 
     fn move_elves(&mut self) -> u32 {
@@ -243,47 +229,36 @@ impl Coordinator {
         let mut wm = self.westmost;
         for y in self.northmost - 1..=self.southmost + 1 {
             for x in self.westmost - 1..=self.eastmost + 1 {
-                match self.grid[y][x] {
-                    Position::ProposedMove(ref moves) => {
-                        moves_proposed += 1;
+                if let Position::ProposedMove(ref moves) = self.grid[y][x] {
+                    moves_proposed += 1;
 
-                        if moves.len() == 1 {
-                            let move_from = moves[0];
-                            self.grid[y][x] = Position::Elf;
-                            self.grid[move_from.1][move_from.0] = Position::Empty;
-                            nm = nm.min(y);
-                            sm = sm.max(y);
-                            em = em.max(x);
-                            wm = wm.min(x);
-                        } else {
-                            self.grid[y][x] = Position::Empty;
-                        }
+                    if moves.len() == 1 {
+                        let move_from = moves[0];
+                        self.grid[y][x] = Position::Elf;
+                        self.grid[move_from.1][move_from.0] = Position::Empty;
+                        nm = nm.min(y);
+                        sm = sm.max(y);
+                        em = em.max(x);
+                        wm = wm.min(x);
+                    } else {
+                        self.grid[y][x] = Position::Empty;
                     }
-                    _ => (),
                 }
             }
         }
         // We need to check that all our elves haven't moved out of the extreme rows (inwards). Things can
         // only move at most one row and we don't need to check if the extreme has got more extreme.
-        if self.northmost == nm {
-            if self.grid[nm].iter().all(|p| matches!(p, Position::Empty)) {
-                nm += 1;
-            }
+        if self.northmost == nm && self.grid[nm].iter().all(|p| matches!(p, Position::Empty)) {
+            nm += 1;
         }
-        if self.southmost == sm {
-            if self.grid[sm].iter().all(|p| matches!(p, Position::Empty)) {
-                sm -= 1;
-            }
+        if self.southmost == sm && self.grid[sm].iter().all(|p| matches!(p, Position::Empty)) {
+            sm -= 1;
         }
-        if self.eastmost == em {
-            if self.grid.iter().all(|r| matches!(r[em], Position::Empty)) {
-                em -= 1;
-            }
+        if self.eastmost == em && self.grid.iter().all(|r| matches!(r[em], Position::Empty)) {
+            em -= 1;
         }
-        if self.westmost == wm {
-            if self.grid.iter().all(|r| matches!(r[wm], Position::Empty)) {
-                wm += 1;
-            }
+        if self.westmost == wm && self.grid.iter().all(|r| matches!(r[wm], Position::Empty)) {
+            wm += 1;
         }
         self.northmost = nm;
         self.southmost = sm;

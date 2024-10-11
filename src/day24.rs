@@ -258,10 +258,8 @@ impl Valley {
     }
 
     pub fn print(&self, expedition: (usize, usize)) {
-        let mut y = 0;
-        let mut x = 0;
-        for row in &self.map {
-            for cell in row {
+        for (y, row) in self.map.iter().enumerate() {
+            for (x, cell) in row.iter().enumerate() {
                 if (x, y) == expedition {
                     print!("E");
                 } else {
@@ -282,11 +280,8 @@ impl Valley {
                         }
                     }
                 }
-                x += 1;
             }
             println!();
-            y += 1;
-            x = 0;
         }
         println!();
     }
@@ -337,7 +332,7 @@ pub fn fastest_traverse(
                 );
             }
             count += 1;
-            let (x, y) = path_vec.last().unwrap().clone();
+            let (x, y) = *path_vec.last().unwrap();
             if !worth_visiting(
                 (cycle_start, cycle_length),
                 (x, y),
@@ -348,7 +343,7 @@ pub fn fastest_traverse(
             }
             if (x, y) == target {
                 println!("\nFound path in {} minutes: {:?}", minutes, path_vec);
-                for minute in 0..path_vec.len() {
+                for (minute, _) in path_vec.iter().enumerate() {
                     starting_valley
                         .predict_state(minute)
                         .print(path_vec[minute]);
