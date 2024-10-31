@@ -28,7 +28,7 @@ impl SnafuConverter {
 
     pub fn to_snafu(dec_value: i64) -> String {
         let mut sig_figs = 1;
-        while (0..(sig_figs)).map(|i| 2 * 5i64.pow(i)).sum::<i64>() < dec_value.abs() {
+        while Self::largest(sig_figs) < dec_value.abs() {
             sig_figs += 1;
         }
 
@@ -37,8 +37,7 @@ impl SnafuConverter {
             .scan(0, |value, index| {
                 let mut digit = -2;
                 while digit <= 2
-                    && *value + (digit * 5i64.pow(index)) + SnafuConverter::largest(index)
-                        < dec_value.abs()
+                    && *value + (digit * 5i64.pow(index)) + Self::largest(index) < dec_value.abs()
                 {
                     digit += 1;
                 }
